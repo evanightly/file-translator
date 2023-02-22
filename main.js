@@ -1,66 +1,58 @@
-const masterPath = "E:\\Software\\Microsoft VS Code"
-/* const fs = require("fs");
+const masterPath = "D:\\Sources\\Documents\\Projects\\todomvc"
+const lang = "zh-Hans"
+const dir = require('node-dir');
+const fs = require('fs')
+const { translate } = require('bing-translate-api');
 
-let currentPath = masterPath
+/**
+ * This function is responsible to create delay between command
+ */
 
-const filesArr = [], foldersArr = []
-
-let parentFolders = 0
-while (true) {
-    const folders = fs.readdirSync(currentPath).filter(file => !file.includes('.'))
-    parentFolders = folders.length
-    if(!folders)
-    for (const folder of folders) {
-        foldersArr.push(folder)
-        currentPath += `\\${folder}`
-        const files = fs.readdirSync(currentPath).filter(file => file.includes('.'))
-        if(files.length <= 0) break
-        for (const file of files) {
-            filesArr.push(file)
-        }
-        break
-    }
-    break
+const delay = ms => {
+    console.log("Delay invoked")
+    return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-console.log("Folders: ", foldersArr)
-console.log("Files: ", filesArr) */
+/**
+ * This function is responsible to extract path and its file name
+ * 
+ * Parameter:
+ * src = source array containing multiple attribute
+ */
+const extract = src =>
+    src.map(file => {
+        const [_, path, fileName] = file.match(/(.*\\)(.*)/)
+        return { path, fileName }
+    })
 
-let fs = require('fs');
-let path = require('path');
+/**
+ * This function is responsible to translate and replace file
+ * 
+ * Parameter:
+ * obj = Array of object containing extracted path and filename
+ */
 
-const files = [], folders = []
-let walk = function (dir, done) {
-    let results = [];
-    fs.readdir(dir, function (err, list) {
-        if (err) return done(err);
-        let pending = list.length;
-        if (!pending) return done(null, results);
-        list.forEach(function (file) {
-            file = path.resolve(dir, file);
-            fs.stat(file, function (err, stat) {
-                if (stat && stat.isDirectory()) {
-                    walk(file, function (err, res) {
-                        results = results.concat(res);
-                        folders.push(file)
-                        if (!--pending) done(null, results);
-                    });
-                } else {
-                    results.push(file);
-                    files.push(file)
+let index = 0
+const translateFile = obj => {
+    for (const file of obj) {
+        const { path, fileName } = file
 
-                    if (!--pending) done(null, results);
-                }
-            });
-        });
-    });
-};
+        // await translate(fileName, null, lang).then(async ({ translation }) => {
+        //     console.log(index, "Action Performed")
+        //     fs.rename(path + fileName, path + translation, err => {
+        //         if (err) console.log(err)
+        //         index++
+        //     })
+        // })
+    }
+}
 
-walk(masterPath, (err, results) => {
-    if (err) throw err
+dir
+    .promiseFiles(masterPath, 'all')
+    .then(files => {
+        filesArr = extract(files.files)
+        dirsArr = extract(files.dirs)
 
-    console.log("results", results.length)
-    console.log("files", files.length, "folders", folders.length)
-    fs.writeFileSync('files.json', JSON.stringify(files))
-    fs.writeFileSync('folders.json', JSON.stringify(folders))
-})
+        translateFile(dirsArr)
+    })
+    .catch(err => console.log(err))

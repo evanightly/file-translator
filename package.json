@@ -11,7 +11,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "bing-translate-api": "^2.9.0"
+    "bing-translate-api": "^2.9.0",
+    "node-dir": "^0.1.17"
   },
   "devDependencies": {
     "nodemon": "^2.0.20"
