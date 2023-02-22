@@ -1,14 +1,34 @@
-const masterPath = "D:\\Sources\\Documents\\Projects\\todomvc"
-const lang = "zh-Hans"
+const masterPath = "D:\\Torrent";
+const translateFileLimit = 5;
+const translateFileTimeout = 2000;
+const lang = "en";
 const dir = require('node-dir');
-const fs = require('fs')
+const fs = require('fs');
 const { translate } = require('bing-translate-api');
+const failedFileProcess = [];
+
+dir.promiseFiles(masterPath, 'all')
+    .then(files => {
+        filesArr = extract(files.files)
+        dirsArr = extract(files.dirs)
+
+        translateFile(dirsArr)
+        translateFile(filesArr)
+
+        if (failedFileProcess.length > 0)
+            fs.writeFileSync('failedFileProcess.json', JSON.stringify(failedFileProcess))
+    })
+    .catch(err => {
+        console.log(err)
+        failedFileProcess.push({ path: err.path })
+    })
 
 /**
- * This function is responsible to create delay between command
+ * This function is responsible to create delay between commands
+ * 
+ * @param {Number} ms Milisecond
  */
-
-const delay = ms => {
+var delay = ms => {
     console.log("Delay invoked")
     return new Promise(resolve => setTimeout(resolve, ms))
 }
@@ -16,10 +36,9 @@ const delay = ms => {
 /**
  * This function is responsible to extract path and its file name
  * 
- * Parameter:
- * src = source array containing multiple attribute
+ * @param {Array} src source array containing multiple attribute
  */
-const extract = src =>
+var extract = src =>
     src.map(file => {
         const [_, path, fileName] = file.match(/(.*\\)(.*)/)
         return { path, fileName }
@@ -28,31 +47,26 @@ const extract = src =>
 /**
  * This function is responsible to translate and replace file
  * 
- * Parameter:
- * obj = Array of object containing extracted path and filename
+ * @param {Object} obj Array of object containing extracted path and filename
  */
-
-let index = 0
-const translateFile = obj => {
+var translateFile = async obj => {
+    let index = 0
     for (const file of obj) {
         const { path, fileName } = file
 
+        if (index % translateFileLimit === 0) await delay(translateFileTimeout)
+        console.log(index, fileName)
         // await translate(fileName, null, lang).then(async ({ translation }) => {
-        //     console.log(index, "Action Performed")
-        //     fs.rename(path + fileName, path + translation, err => {
-        //         if (err) console.log(err)
-        //         index++
-        //     })
+        //     console.log(fileName)
+        //     try {
+        //         fs.rename(path + fileName, path + translation, err => {
+        //             if (err) console.log(err)
+        //             index++
+        //         })
+        //     } catch (error) {
+        //         failedFileProcess.push({ path, fileName })
+        //     }
         // })
     }
 }
 
-dir
-    .promiseFiles(masterPath, 'all')
-    .then(files => {
-        filesArr = extract(files.files)
-        dirsArr = extract(files.dirs)
-
-        translateFile(dirsArr)
-    })
-    .catch(err => console.log(err))
