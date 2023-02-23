@@ -1,6 +1,6 @@
-const masterPath = "D:\\Torrent";
+const masterPath = "D:\\Sources\\Documents\\Projects\\todomvc";
 const translateFileLimit = 5;
-const translateFileTimeout = 2000;
+const translateFileTimeout = 3000;
 const lang = "en";
 const dir = require('node-dir');
 const fs = require('fs');
@@ -12,7 +12,7 @@ dir.promiseFiles(masterPath, 'all')
         filesArr = extract(files.files)
         dirsArr = extract(files.dirs)
 
-        translateFile(dirsArr)
+        // translateFile(dirsArr)
         translateFile(filesArr)
 
         if (failedFileProcess.length > 0)
@@ -55,18 +55,17 @@ var translateFile = async obj => {
         const { path, fileName } = file
 
         if (index % translateFileLimit === 0) await delay(translateFileTimeout)
-        console.log(index, fileName)
-        // await translate(fileName, null, lang).then(async ({ translation }) => {
-        //     console.log(fileName)
-        //     try {
-        //         fs.rename(path + fileName, path + translation, err => {
-        //             if (err) console.log(err)
-        //             index++
-        //         })
-        //     } catch (error) {
-        //         failedFileProcess.push({ path, fileName })
-        //     }
-        // })
+        await translate(fileName, null, lang).then(async ({ translation }) => {
+            console.log(index, fileName)
+            try {
+                fs.rename(path + fileName, path + translation, err => {
+                    if (err) console.log(err)
+                })
+            } catch (error) {
+                failedFileProcess.push({ path, fileName })
+            }
+        })
+        index++
     }
 }
 
