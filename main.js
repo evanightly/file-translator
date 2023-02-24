@@ -1,37 +1,45 @@
-const masterPath = "D:\\Sources\\Documents\\Projects\\todomvc";
-const translateFileLimit = 5;
-const translateFileTimeout = 3000;
-const lang = "en";
+const config = require('./config.json')
 const dir = require('node-dir');
 const fs = require('fs');
 const { translate } = require('bing-translate-api');
-const failedFileProcess = [];
 
-dir.promiseFiles(masterPath, 'all')
-    .then(files => {
-        filesArr = extract(files.files)
-        dirsArr = extract(files.dirs)
+const { PATH, EXPECTED_LANGUAGE, REQUEST_TIMEOUT } = config;
+const CP_DIRS = require('./cp_dirs.json');
+const CP_FILES = require('./cp_files.json');
 
-        // translateFile(dirsArr)
-        translateFile(filesArr)
+// reset("cp_dirs.json");
+// reset("cp_files.json");
 
-        if (failedFileProcess.length > 0)
-            fs.writeFileSync('failedFileProcess.json', JSON.stringify(failedFileProcess))
-    })
-    .catch(err => {
-        console.log(err)
-        failedFileProcess.push({ path: err.path })
-    })
+(async () => {
+    const { files, dirs } = await dir.promiseFiles(PATH, 'all')
+    filesArr = extract(files)
+    dirsArr = extract(dirs)
+    await translateFile(dirsArr, CP_DIRS)
+    await translateFile(filesArr, CP_FILES)
+})()
+
+/**
+ * This function is responsible to reset all persisted checkpoint values
+ * 
+ * @param {String} filename 
+ * -- checkpoint file to reset 
+ * - value (cp_dirs|cp_files)
+ */
+function reset(filename) {
+    fs.writeFileSync(filename, JSON.stringify({
+        LAST_FILE_INDEX: 0,
+        PATH: filename
+    }))
+
+    console.log("Reset complete", filename)
+}
 
 /**
  * This function is responsible to create delay between commands
  * 
  * @param {Number} ms Milisecond
  */
-var delay = ms => {
-    console.log("Delay invoked")
-    return new Promise(resolve => setTimeout(resolve, ms))
-}
+var delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 /**
  * This function is responsible to extract path and its file name
@@ -47,25 +55,39 @@ var extract = src =>
 /**
  * This function is responsible to translate and replace file
  * 
- * @param {Object} obj Array of object containing extracted path and filename
+ * @param {Number} checkpoint Last translated file index/Checkpoint
+ * @param {Object} files Array of object containing extracted path and filename
  */
-var translateFile = async obj => {
+var translateFile = async (files, checkpoint) => {
+    let checkpointIndex = checkpoint.LAST_FILE_INDEX
+    if (checkpointIndex > 1) console.log("Checkpoint index found!")
+
+    console.log(`Expected finish in ${Math.ceil(files.length * REQUEST_TIMEOUT / 60)} Minutes`)
+
     let index = 0
-    for (const file of obj) {
+    for (const file of files) {
         const { path, fileName } = file
 
-        if (index % translateFileLimit === 0) await delay(translateFileTimeout)
-        await translate(fileName, null, lang).then(async ({ translation }) => {
-            console.log(index, fileName)
-            try {
-                fs.rename(path + fileName, path + translation, err => {
-                    if (err) console.log(err)
-                })
-            } catch (error) {
-                failedFileProcess.push({ path, fileName })
-            }
-        })
+        console.log(checkpointIndex, index)
+        if (checkpointIndex > 1 && checkpointIndex > index) {
+            index++
+            continue
+        }
+        else {
+            await delay(REQUEST_TIMEOUT)
+            const { translation } = await translate(fileName, null, EXPECTED_LANGUAGE)
+            fs.rename(path + fileName, path + translation, err => {
+                if (err) console.log(err)
+                console.log(checkpointIndex, fileName)
+            })
+
+            fs.writeFileSync(checkpoint.PATH, JSON.stringify({
+                LAST_FILE_INDEX: checkpointIndex,
+                PATH: checkpoint.PATH
+            }))
+        }
         index++
+        checkpointIndex++
     }
 }
 
